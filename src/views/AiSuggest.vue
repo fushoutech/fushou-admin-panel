@@ -113,9 +113,9 @@
           :class="activeTab === 'coCreation' ? 'border-b-2 border-black text-black' : 'text-gray-500'" class="py-2">
           共创信息
         </button>
-        <button @click="activeTab = 'aiRemark'"
-          :class="activeTab === 'aiRemark' ? 'border-b-2 border-black text-black' : 'text-gray-500'" class="py-2">
-          系统点评
+        <button @click="activeTab = 'remark'"
+          :class="activeTab === 'remark' ? 'border-b-2 border-black text-black' : 'text-gray-500'" class="py-2">
+          点评
         </button>
       </div>
 
@@ -161,18 +161,30 @@
           </div>
         </div>
 
-        <!-- 系统点评 -->
-        <div v-if="activeTab === 'aiRemark'" class="space-y-4 text-sm text-gray-700">
-          <h3 class="text-base font-semibold">系统点评（可修改）</h3>
-          <textarea v-model="editableAiRemark" rows="10"
-            class="w-full border rounded p-3 text-sm text-gray-700 focus:outline-none focus:ring"></textarea>
-          <div class="mt-2 text-right">
-            <button class="bg-black text-sm text-white px-4 py-2 rounded hover:bg-gray-900" @click="saveAiRemark"
-              :disabled="saving">
-              {{ saving ? '确认中...' : '提交确认' }}
-            </button>
-          </div>
-        </div>
+        <!-- 改为统一名称 -->
+<div v-if="activeTab === 'remark'" class="space-y-6 text-sm text-gray-700">
+  <!-- AI点评 -->
+  <div class="border rounded p-4 bg-gray-50">
+    <h3 class="text-base font-semibold mb-2">智能点评（AI生成，可编辑）</h3>
+    <textarea v-model="editableAiRemark" rows="6" class="w-full border rounded p-2 text-sm"></textarea>
+    <div class="text-right mt-2">
+      <button @click="saveAiRemark" :disabled="saving" class="bg-black text-white px-4 py-2 rounded text-sm">
+        {{ saving ? '保存中...' : '保存 AI 点评' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- 人工点评 -->
+  <div class="border rounded p-4 bg-gray-50">
+    <h3 class="text-base font-semibold mb-2">人工点评（人工撰写，权威参考）	</h3>
+    <textarea v-model="editableHumanRemark" rows="6" class="w-full border rounded p-2 text-sm"></textarea>
+    <div class="text-right mt-2">
+      <button @click="saveHumanRemark" :disabled="saving" class="bg-black text-white px-4 py-2 rounded text-sm">
+        {{ saving ? '保存中...' : '保存人工点评' }}
+      </button>
+    </div>
+  </div>
+</div>
 
       </div>
     </div>
@@ -215,6 +227,7 @@ const filters = ref({ keyword: '', status: '' })
 const detailVisible = ref(false)
 const currentItem = ref(null)
 const editableAiRemark = ref('')
+const editableHumanRemark = ref('')
 
 const confirmVisible = ref(false)
 const confirmItemId = ref(null)
@@ -347,6 +360,29 @@ const saveAiRemark = async () => {
   }
 }
 
+const saveHumanRemark = async () => {
+  if (!currentItem.value?._id) return
+  saving.value = true
+  try {
+    const res = await axios.post('/saveHumanRemark', {
+      id: currentItem.value._id,
+      humanRemark: editableHumanRemark.value || ''
+    })
+    if (res.data.code === 0) {
+      alert('保存成功')
+      currentItem.value.humanRemark = editableHumanRemark.value
+      await fetchForms()
+    } else {
+      alert('保存失败：' + res.data.msg)
+    }
+  } catch (err) {
+    console.error('保存失败：', err)
+    alert('保存失败：' + (err?.response?.data?.message || err.message))
+  } finally {
+    saving.value = false
+  }
+}
+
 const generateSingle = (id) => {
   confirmItemId.value = id
   confirmAction.value = () => executeGenerate(id)
@@ -374,7 +410,9 @@ const executeGenerate = async (id) => {
 
 const goToDetail = (item) => {
   currentItem.value = item
-  editableAiRemark.value = item.aiRemark || ''
+  editableAiRemark.value = item.aiRemark || '',
+  editableHumanRemark.value = item.manualRemark || ''
+
   detailVisible.value = true
 }
 
